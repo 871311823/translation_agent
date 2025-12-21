@@ -34,29 +34,39 @@ def model_load(
     TEMPERATURE = temperature
     JS_MODE = js_mode
 
-    match endpoint:
-        case "OpenAI":
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        case "Groq":
-            client = openai.OpenAI(
-                api_key=api_key if api_key else os.getenv("GROQ_API_KEY"),
-                base_url="https://api.groq.com/openai/v1",
-            )
-        case "TogetherAI":
-            client = openai.OpenAI(
-                api_key=api_key if api_key else os.getenv("TOGETHER_API_KEY"),
-                base_url="https://api.together.xyz/v1",
-            )
-        case "CUSTOM":
-            client = openai.OpenAI(api_key=api_key, base_url=base_url)
-        case "Ollama":
-            client = openai.OpenAI(
-                api_key="ollama", base_url="http://localhost:11434/v1"
-            )
-        case _:
-            client = openai.OpenAI(
-                api_key=api_key if api_key else os.getenv("OPENAI_API_KEY")
-            )
+    if endpoint == "OpenAI":
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    elif endpoint == "Groq":
+        client = openai.OpenAI(
+            api_key=api_key if api_key else os.getenv("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1",
+        )
+    elif endpoint == "TogetherAI":
+        client = openai.OpenAI(
+            api_key=api_key if api_key else os.getenv("TOGETHER_API_KEY"),
+            base_url="https://api.together.xyz/v1",
+        )
+    elif endpoint == "CUSTOM":
+        if not base_url:
+            raise ValueError("CUSTOM端点需要提供基础URL")
+        if not api_key:
+            raise ValueError("CUSTOM端点需要提供API密钥")
+        # 确保base_url以/v1结尾（OpenAI兼容格式）
+        base_url = base_url.strip()
+        if not base_url.endswith("/v1"):
+            if base_url.endswith("/"):
+                base_url = base_url + "v1"
+            else:
+                base_url = base_url + "/v1"
+        client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    elif endpoint == "Ollama":
+        client = openai.OpenAI(
+            api_key="ollama", base_url="http://localhost:11434/v1"
+        )
+    else:
+        client = openai.OpenAI(
+            api_key=api_key if api_key else os.getenv("OPENAI_API_KEY")
+        )
 
 
 def rate_limit(get_max_per_minute):
@@ -128,9 +138,19 @@ def get_completion(
                     {"role": "user", "content": prompt},
                 ],
             )
+            if not response.choices or len(response.choices) == 0:
+                raise gr.Error("API返回空响应: 模型未返回任何内容")
             return response.choices[0].message.content
         except Exception as e:
-            raise gr.Error(f"An unexpected error occurred: {e}") from e
+            error_msg = str(e)
+            if "404" in error_msg or "Not Found" in error_msg:
+                raise gr.Error(f"API端点或模型不存在 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
+            elif "401" in error_msg or "Unauthorized" in error_msg:
+                raise gr.Error(f"API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
+            elif "429" in error_msg:
+                raise gr.Error(f"请求过于频繁 (429): 请稍后再试或降低请求频率。错误详情: {e}") from e
+            else:
+                raise gr.Error(f"发生意外错误: {e}") from e
     else:
         try:
             response = client.chat.completions.create(
@@ -142,9 +162,19 @@ def get_completion(
                     {"role": "user", "content": prompt},
                 ],
             )
+            if not response.choices or len(response.choices) == 0:
+                raise gr.Error("API返回空响应: 模型未返回任何内容")
             return response.choices[0].message.content
         except Exception as e:
-            raise gr.Error(f"An unexpected error occurred: {e}") from e
+            error_msg = str(e)
+            if "404" in error_msg or "Not Found" in error_msg:
+                raise gr.Error(f"API端点或模型不存在 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
+            elif "401" in error_msg or "Unauthorized" in error_msg:
+                raise gr.Error(f"API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
+            elif "429" in error_msg:
+                raise gr.Error(f"请求过于频繁 (429): 请稍后再试或降低请求频率。错误详情: {e}") from e
+            else:
+                raise gr.Error(f"发生意外错误: {e}") from e
 
 
 utils.get_completion = get_completion

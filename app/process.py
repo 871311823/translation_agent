@@ -102,17 +102,17 @@ def translator(
     if num_tokens_in_text < max_tokens:
         ic("Translating text as single chunk")
 
-        progress((1, 3), desc="First translation...")
+        progress((1, 3), desc="初始翻译中...")
         init_translation = one_chunk_initial_translation(
             source_lang, target_lang, source_text
         )
 
-        progress((2, 3), desc="Reflection...")
+        progress((2, 3), desc="反思评估中...")
         reflection = one_chunk_reflect_on_translation(
             source_lang, target_lang, source_text, init_translation, country
         )
 
-        progress((3, 3), desc="Second translation...")
+        progress((3, 3), desc="改进翻译中...")
         final_translation = one_chunk_improve_translation(
             source_lang, target_lang, source_text, init_translation, reflection
         )
@@ -136,14 +136,14 @@ def translator(
 
         source_text_chunks = text_splitter.split_text(source_text)
 
-        progress((1, 3), desc="First translation...")
+        progress((1, 3), desc="初始翻译中...")
         translation_1_chunks = multichunk_initial_translation(
             source_lang, target_lang, source_text_chunks
         )
 
         init_translation = "".join(translation_1_chunks)
 
-        progress((2, 3), desc="Reflection...")
+        progress((2, 3), desc="反思评估中...")
         reflection_chunks = multichunk_reflect_on_translation(
             source_lang,
             target_lang,
@@ -154,7 +154,7 @@ def translator(
 
         reflection = "".join(reflection_chunks)
 
-        progress((3, 3), desc="Second translation...")
+        progress((3, 3), desc="改进翻译中...")
         translation_2_chunks = multichunk_improve_translation(
             source_lang,
             target_lang,
@@ -187,7 +187,7 @@ def translator_sec(
     if num_tokens_in_text < max_tokens:
         ic("Translating text as single chunk")
 
-        progress((1, 3), desc="First translation...")
+        progress((1, 3), desc="初始翻译中...")
         init_translation = one_chunk_initial_translation(
             source_lang, target_lang, source_text
         )
@@ -195,14 +195,20 @@ def translator_sec(
         try:
             model_load(endpoint2, base2, model2, api_key2)
         except Exception as e:
-            raise gr.Error(f"An unexpected error occurred: {e}") from e
+            error_msg = str(e)
+            if "404" in error_msg or "Not Found" in error_msg:
+                raise gr.Error(f"额外端点配置错误 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
+            elif "401" in error_msg or "Unauthorized" in error_msg:
+                raise gr.Error(f"额外端点API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
+            else:
+                raise gr.Error(f"额外端点模型加载失败: {e}") from e
 
-        progress((2, 3), desc="Reflection...")
+        progress((2, 3), desc="反思评估中...")
         reflection = one_chunk_reflect_on_translation(
             source_lang, target_lang, source_text, init_translation, country
         )
 
-        progress((3, 3), desc="Second translation...")
+        progress((3, 3), desc="改进翻译中...")
         final_translation = one_chunk_improve_translation(
             source_lang, target_lang, source_text, init_translation, reflection
         )
@@ -226,7 +232,7 @@ def translator_sec(
 
         source_text_chunks = text_splitter.split_text(source_text)
 
-        progress((1, 3), desc="First translation...")
+        progress((1, 3), desc="初始翻译中...")
         translation_1_chunks = multichunk_initial_translation(
             source_lang, target_lang, source_text_chunks
         )
@@ -236,9 +242,15 @@ def translator_sec(
         try:
             model_load(endpoint2, base2, model2, api_key2)
         except Exception as e:
-            raise gr.Error(f"An unexpected error occurred: {e}") from e
+            error_msg = str(e)
+            if "404" in error_msg or "Not Found" in error_msg:
+                raise gr.Error(f"额外端点配置错误 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
+            elif "401" in error_msg or "Unauthorized" in error_msg:
+                raise gr.Error(f"额外端点API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
+            else:
+                raise gr.Error(f"额外端点模型加载失败: {e}") from e
 
-        progress((2, 3), desc="Reflection...")
+        progress((2, 3), desc="反思评估中...")
         reflection_chunks = multichunk_reflect_on_translation(
             source_lang,
             target_lang,
@@ -249,7 +261,7 @@ def translator_sec(
 
         reflection = "".join(reflection_chunks)
 
-        progress((3, 3), desc="Second translation...")
+        progress((3, 3), desc="改进翻译中...")
         translation_2_chunks = multichunk_improve_translation(
             source_lang,
             target_lang,
