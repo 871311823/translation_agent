@@ -6,6 +6,9 @@ from typing import Optional, Union
 
 import gradio as gr
 import openai
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 import translation_agent.utils as utils
 
 

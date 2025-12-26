@@ -9,7 +9,18 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 load_dotenv()  # read local .env file
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Initialize client as None, will be set by model_load function
+client = None
+
+try:
+    # Try to initialize with environment variable if available
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        client = openai.OpenAI(api_key=api_key)
+except Exception:
+    # Client will be initialized later by model_load function
+    pass
 
 MAX_TOKENS_PER_CHUNK = (
     1000  # if text is more than this many tokens, we'll break it up into

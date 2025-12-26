@@ -25,7 +25,8 @@
 - 🔄 **反思式工作流**：三阶段翻译流程（初始翻译 → 反思评估 → 改进翻译）
 - 🎨 **高度可定制**：支持风格、术语、地域变体等精细控制
 - 🌍 **多 LLM 支持**：OpenAI、Groq、TogetherAI、Ollama、自定义端点
-- 🖥️ **友好的 WebUI**：基于 Gradio 的图形界面，支持文件上传
+- 🖥️ **双版本界面**：Web版（在线使用）+ 桌面版（批量处理）
+- 📦 **批量翻译**：桌面版支持多文件并发翻译，智能文件命名
 - 💾 **配置自动保存**：页面刷新时自动回填历史配置
 - 📄 **多格式支持**：PDF、DOCX、TXT、Markdown 等
 - 🔍 **差异对比**：可视化显示翻译前后的改进
@@ -50,11 +51,34 @@
 
 ### 🚀 快速开始
 
-#### 方式一：使用在线 WebUI
+#### 方式一：使用桌面版（推荐批量翻译）
+
+**Windows 用户：**
+```bash
+# 1. 克隆项目
+git clone https://github.com/871311823/translation_agent.git
+cd translation_agent
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 启动桌面版
+python 启动翻译软件.py
+# 或双击 启动翻译软件.bat
+```
+
+**桌面版特性：**
+- 🚀 批量文件翻译（支持多文件并发）
+- 📁 智能文件管理和命名
+- ⏸️ 暂停/继续/停止控制
+- 📊 实时进度监控
+- 💾 TXT/DOCX 输出格式
+
+#### 方式二：使用在线 WebUI
 
 直接访问已部署的服务：**http://47.109.82.94:7860**
 
-#### 方式二：本地安装
+#### 方式三：本地安装 WebUI
 
 **前置要求：**
 - Python 3.9+
@@ -83,7 +107,7 @@ poetry run python app/app.py
 
 访问 `http://localhost:7860` 即可使用。
 
-#### 方式三：Python API
+#### 方式四：Python API
 
 ```python
 import translation_agent as ta
@@ -179,20 +203,22 @@ print(translation)
 
 ```
 translation-agent/
-├── src/translation_agent/
-│   ├── utils.py          # 核心翻译逻辑（三阶段工作流）
-│   └── __init__.py
+├── translation_agent_gui.py     # 桌面版主程序
+├── 启动翻译软件.py              # 桌面版启动器
+├── 启动翻译软件.bat             # Windows 批处理启动
+├── translation_config.json     # 桌面版配置文件
 ├── app/
-│   ├── app.py            # Gradio WebUI 界面
-│   ├── process.py        # 处理逻辑
-│   ├── patch.py          # LLM 端点配置
-│   └── user_config.json  # 用户配置（自动生成）
-├── examples/
-│   ├── example_script.py # Python API 使用示例
-│   └── sample-texts/     # 示例文本
-├── deploy.sh             # Linux 部署脚本
-├── deploy.ps1            # Windows 部署脚本
-└── pyproject.toml        # 项目依赖配置
+│   ├── app.py                  # Web版 Gradio 界面
+│   ├── process.py              # 核心翻译逻辑
+│   └── patch.py                # LLM 端点配置
+├── src/translation_agent/
+│   ├── utils.py                # 核心翻译算法
+│   └── __init__.py
+├── examples/                   # 使用示例
+├── 快速启动指南.md             # 快速入门指南
+├── 桌面版使用说明.md           # 桌面版详细说明
+├── 桌面版与网页版翻译逻辑对比说明.md  # 版本对比
+└── pyproject.toml              # 项目依赖配置
 ```
 
 ### 🔧 高级功能

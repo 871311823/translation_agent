@@ -533,15 +533,15 @@ with gr.Blocks(theme="soft", css=CSS, fill_height=True) as demo:
             )
             with gr.Tab("最终翻译"):
                 output_final = gr.Textbox(
-                    label="最终翻译", lines=14, show_copy_button=True
+                    label="最终翻译", lines=14
                 )
             with gr.Tab("初始翻译"):
                 output_init = gr.Textbox(
-                    label="初始翻译", lines=14, show_copy_button=True
+                    label="初始翻译", lines=14
                 )
             with gr.Tab("反思建议"):
                 output_reflect = gr.Textbox(
-                    label="反思建议", lines=14, show_copy_button=True
+                    label="反思建议", lines=14
                 )
             with gr.Tab("差异对比"):
                 output_diff = gr.HighlightedText(visible=False)

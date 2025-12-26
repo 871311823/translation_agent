@@ -16,16 +16,47 @@ from patch import (
     one_chunk_initial_translation,
     one_chunk_reflect_on_translation,
 )
-from simplemma import simple_tokenizer
+try:
+    from simplemma import simple_tokenizer
+    SIMPLEMMA_AVAILABLE = True
+except ImportError:
+    SIMPLEMMA_AVAILABLE = False
+    print("Warning: simplemma not available, using basic tokenization")
 
 
 progress = gr.Progress()
 
 
 def extract_text(path):
-    with open(path) as f:
-        file_text = f.read()
-    return file_text
+    """读取文本文件，自动检测编码"""
+    # 尝试多种编码
+    encodings = ['utf-8', 'gbk', 'gb2312', 'utf-16', 'latin-1']
+    
+    for encoding in encodings:
+        try:
+            with open(path, 'r', encoding=encoding) as f:
+                file_text = f.read()
+            return file_text
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    
+    # 如果所有编码都失败，使用二进制模式读取并尝试解码
+    try:
+        with open(path, 'rb') as f:
+            content = f.read()
+        # 尝试使用chardet检测编码
+        try:
+            import chardet
+            detected = chardet.detect(content)
+            encoding = detected['encoding']
+            if encoding:
+                return content.decode(encoding)
+        except ImportError:
+            pass
+        # 最后尝试使用errors='ignore'
+        return content.decode('utf-8', errors='ignore')
+    except Exception as e:
+        raise Exception(f"无法读取文件 {path}: {e}")
 
 
 def extract_pdf(path):
@@ -46,8 +77,14 @@ def extract_docx(path):
 
 
 def tokenize(text):
-    # Use nltk to tokenize the text
-    words = simple_tokenizer(text)
+    # Use simplemma if available, otherwise use basic tokenization
+    if SIMPLEMMA_AVAILABLE:
+        words = simple_tokenizer(text)
+    else:
+        # Basic tokenization fallback
+        import re
+        words = re.findall(r'\b\w+\b|[^\w\s]', text)
+    
     # Check if the text contains spaces
     if " " in text:
         # Create a list of words and spaces

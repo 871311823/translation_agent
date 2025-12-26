@@ -1,0 +1,30 @@
+{
+  "endpoint": "CUSTOM",
+  "model": "gemini-3-flash-preview",
+  "api_key": "sk-geNO9uBFcLCLxPDdpyZK1nj7yb0Njw3twmZmozm3yC4XemQd",
+  "base_url": "http://47.109.82.94:7861/v1",
+  "use_extra_endpoint": true,
+  "endpoint2": "CUSTOM",
+  "model2": "gemini-3-pro-preview",
+  "api_key2": "sk-geNO9uBFcLCLxPDdpyZK1nj7yb0Njw3twmZmozm3yC4XemQd",
+  "base_url2": "http://47.109.82.94:7861/v1",
+  "source_lang": "Chinese",
+  "target_lang": "English",
+  "country": "United States",
+  "max_tokens": 1000,
+  "temperature": 0.3,
+  "rpm": 60,
+  "input_folder": "D:/Code/OPPO/AI_NovelGenerator/小说/吸血鬼女王复仇本/章节正文",
+  "output_folder": "D:/Code/OPPO/AI_NovelGenerator/小说/吸血鬼女王复仇本/译文",
+  "output_format": "txt",
+  "concurrent_tasks": 5,
+  "file_types": {
+    "txt": true,
+    "md": false,
+    "pdf": false,
+    "docx": false,
+    "py": false,
+    "json": false,
+    "cpp": false
+  }
+}
