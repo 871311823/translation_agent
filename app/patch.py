@@ -106,7 +106,7 @@ def get_completion(
     json_mode: bool = False,
 ) -> Union[str, dict]:
     """
-        Generate a completion using the OpenAI API.
+        Generate a completion using the OpenAI API with reasonable timeout control.
 
     Args:
         prompt (str): The user's prompt or query.
@@ -129,6 +129,15 @@ def get_completion(
     temperature = TEMPERATURE
     json_mode = JS_MODE
 
+    # 设置合理的超时时间：根据提示长度调整，但不要过于严格
+    prompt_length = len(prompt)
+    if prompt_length < 2000:
+        timeout_seconds = 300  # 短提示5分钟
+    elif prompt_length < 8000:
+        timeout_seconds = 600  # 中等提示10分钟
+    else:
+        timeout_seconds = 900  # 长提示15分钟
+
     if json_mode:
         try:
             response = client.chat.completions.create(
@@ -140,18 +149,23 @@ def get_completion(
                     {"role": "system", "content": system_message},
                     {"role": "user", "content": prompt},
                 ],
+                timeout=timeout_seconds  # 添加超时控制
             )
             if not response.choices or len(response.choices) == 0:
                 raise gr.Error("API返回空响应: 模型未返回任何内容")
             return response.choices[0].message.content
         except Exception as e:
             error_msg = str(e)
-            if "404" in error_msg or "Not Found" in error_msg:
+            if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                raise gr.Error(f"API请求超时 ({timeout_seconds//60}分钟): 请检查网络连接或尝试减少文本长度。错误详情: {e}") from e
+            elif "404" in error_msg or "Not Found" in error_msg:
                 raise gr.Error(f"API端点或模型不存在 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
             elif "401" in error_msg or "Unauthorized" in error_msg:
                 raise gr.Error(f"API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
             elif "429" in error_msg:
                 raise gr.Error(f"请求过于频繁 (429): 请稍后再试或降低请求频率。错误详情: {e}") from e
+            elif "500" in error_msg or "502" in error_msg or "503" in error_msg:
+                raise gr.Error(f"服务器错误 ({error_msg}): API服务器暂时不可用，请稍后重试。") from e
             else:
                 raise gr.Error(f"发生意外错误: {e}") from e
     else:
@@ -164,18 +178,23 @@ def get_completion(
                     {"role": "system", "content": system_message},
                     {"role": "user", "content": prompt},
                 ],
+                timeout=timeout_seconds  # 添加超时控制
             )
             if not response.choices or len(response.choices) == 0:
                 raise gr.Error("API返回空响应: 模型未返回任何内容")
             return response.choices[0].message.content
         except Exception as e:
             error_msg = str(e)
-            if "404" in error_msg or "Not Found" in error_msg:
+            if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                raise gr.Error(f"API请求超时 ({timeout_seconds//60}分钟): 请检查网络连接或尝试减少文本长度。错误详情: {e}") from e
+            elif "404" in error_msg or "Not Found" in error_msg:
                 raise gr.Error(f"API端点或模型不存在 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
             elif "401" in error_msg or "Unauthorized" in error_msg:
                 raise gr.Error(f"API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
             elif "429" in error_msg:
                 raise gr.Error(f"请求过于频繁 (429): 请稍后再试或降低请求频率。错误详情: {e}") from e
+            elif "500" in error_msg or "502" in error_msg or "503" in error_msg:
+                raise gr.Error(f"服务器错误 ({error_msg}): API服务器暂时不可用，请稍后重试。") from e
             else:
                 raise gr.Error(f"发生意外错误: {e}") from e
 

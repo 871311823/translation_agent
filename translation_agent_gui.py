@@ -386,6 +386,68 @@ class TranslationAgentGUI:
                                   font=('Arial', 10, 'bold'), foreground='red')
         self.rpm_label.pack(side='left')
         
+        # === 性能优化配置区域 ===
+        performance_frame = ttk.LabelFrame(scrollable_frame, text="🚀 性能优化", padding=20)
+        performance_frame.pack(fill='x', pady=(0, 15))
+        
+        # 超时设置
+        timeout_frame = ttk.Frame(performance_frame)
+        timeout_frame.pack(fill='x', pady=(0, 10))
+        
+        ttk.Label(timeout_frame, text="API超时(秒):", font=('Arial', 10, 'bold')).pack(side='left')
+        self.api_timeout_var = tk.IntVar(value=300)  # 默认5分钟
+        
+        # 超时输入框
+        timeout_spinbox = ttk.Spinbox(timeout_frame, from_=60, to=1800, 
+                                     textvariable=self.api_timeout_var, 
+                                     width=6, font=('Arial', 10))
+        timeout_spinbox.pack(side='left', padx=(10, 10))
+        
+        # 超时滑动条
+        timeout_scale = ttk.Scale(timeout_frame, from_=60, to=1800, variable=self.api_timeout_var,
+                                 orient='horizontal', length=200, command=self.on_timeout_change)
+        timeout_scale.pack(side='left', padx=(0, 10))
+        
+        # 超时标签
+        self.timeout_label = ttk.Label(timeout_frame, textvariable=self.api_timeout_var, 
+                                      font=('Arial', 10, 'bold'), foreground='orange')
+        self.timeout_label.pack(side='left')
+        
+        # 超时建议
+        ttk.Label(timeout_frame, text="(建议: 小文件180s, 大文件600s)", 
+                 font=('Arial', 8), foreground='gray').pack(side='left', padx=(10, 0))
+        
+        # 性能模式选择
+        mode_frame = ttk.Frame(performance_frame)
+        mode_frame.pack(fill='x', pady=(0, 10))
+        
+        ttk.Label(mode_frame, text="性能模式:", font=('Arial', 10, 'bold')).pack(side='left')
+        self.performance_mode_var = tk.StringVar(value="平衡")
+        mode_combo = ttk.Combobox(mode_frame, textvariable=self.performance_mode_var,
+                                 values=["快速", "平衡", "稳定"], state="readonly", width=10)
+        mode_combo.pack(side='left', padx=(10, 20))
+        mode_combo.bind('<<ComboboxSelected>>', self.on_performance_mode_change)
+        
+        # 模式说明
+        self.mode_desc_label = ttk.Label(mode_frame, text="• 平衡: 适合大多数情况", 
+                                        font=('Arial', 8), foreground='blue')
+        self.mode_desc_label.pack(side='left', padx=(10, 0))
+        
+        # 重试设置
+        retry_frame = ttk.Frame(performance_frame)
+        retry_frame.pack(fill='x', pady=(0, 10))
+        
+        ttk.Label(retry_frame, text="失败重试次数:", font=('Arial', 10, 'bold')).pack(side='left')
+        self.retry_count_var = tk.IntVar(value=2)
+        
+        retry_spinbox = ttk.Spinbox(retry_frame, from_=0, to=5, 
+                                   textvariable=self.retry_count_var, 
+                                   width=6, font=('Arial', 10))
+        retry_spinbox.pack(side='left', padx=(10, 10))
+        
+        ttk.Label(retry_frame, text="次 (0=不重试)", 
+                 font=('Arial', 8), foreground='gray').pack(side='left', padx=(10, 0))
+        
         # 打包滚动区域（左侧）
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
@@ -762,6 +824,49 @@ class TranslationAgentGUI:
             self.rpm_var.set(int_value)
         except (ValueError, TypeError):
             self.rpm_var.set(60)  # 默认值
+    
+    def on_timeout_change(self, value):
+        """超时时间改变时的处理 - 确保为整数"""
+        try:
+            int_value = int(float(value))
+            self.api_timeout_var.set(int_value)
+        except (ValueError, TypeError):
+            self.api_timeout_var.set(120)  # 默认值
+    
+    def on_performance_mode_change(self, event=None):
+        """性能模式改变时的处理"""
+        mode = self.performance_mode_var.get()
+        
+        if mode == "快速":
+            # 快速模式：适中超时，较高并发
+            if hasattr(self, 'api_timeout_var'):
+                self.api_timeout_var.set(180)  # 3分钟
+            self.concurrent_var.set(6)
+            self.rpm_var.set(80)
+            if hasattr(self, 'retry_count_var'):
+                self.retry_count_var.set(1)
+            desc = "• 快速: 适中超时高并发，适合小文件"
+        elif mode == "平衡":
+            # 平衡模式：中等设置
+            if hasattr(self, 'api_timeout_var'):
+                self.api_timeout_var.set(300)  # 5分钟
+            self.concurrent_var.set(4)
+            self.rpm_var.set(60)
+            if hasattr(self, 'retry_count_var'):
+                self.retry_count_var.set(2)
+            desc = "• 平衡: 适合大多数情况"
+        elif mode == "稳定":
+            # 稳定模式：较长超时，较低并发
+            if hasattr(self, 'api_timeout_var'):
+                self.api_timeout_var.set(600)  # 10分钟
+            self.concurrent_var.set(2)
+            self.rpm_var.set(30)
+            if hasattr(self, 'retry_count_var'):
+                self.retry_count_var.set(3)
+            desc = "• 稳定: 长超时低并发，适合大文件"
+        
+        if hasattr(self, 'mode_desc_label'):
+            self.mode_desc_label.config(text=desc)
     
     def create_file_preview_panel(self, parent):
         """创建文件预览和统计面板"""
@@ -1758,7 +1863,7 @@ class TranslationAgentGUI:
             return None
     
     def run_translation(self):
-        """运行翻译任务"""
+        """运行翻译任务 - 优化版本，增加更好的并发控制和错误处理"""
         try:
             print(f"\n{'#'*60}")
             print(f"# 开始批量翻译")
@@ -1791,50 +1896,118 @@ class TranslationAgentGUI:
             completed_count = 0
             failed_count = 0
             
-            # 使用线程池执行翻译
+            # 将任务列表转换为队列，便于管理
+            task_queue = list(self.translation_tasks.values())
+            active_futures = {}
+            
+            # 使用线程池执行翻译 - 优化版本
             with ThreadPoolExecutor(max_workers=concurrent_tasks) as executor:
-                future_to_task = {}
-                
-                for task in self.translation_tasks.values():
-                    # 检查是否停止
+                # 提交初始批次的任务
+                for i in range(min(concurrent_tasks, len(task_queue))):
                     if not self.is_translating:
-                        print("⚠️ 用户停止翻译")
                         break
                     
+                    task = task_queue.pop(0)
+                    print(f"[任务管理] 提交任务: {task.filename}")
+                    future = executor.submit(self.translate_single_file, task, config)
+                    active_futures[future] = task
+                
+                # 处理完成的任务并提交新任务
+                while active_futures and self.is_translating:
                     # 等待暂停结束
                     while self.is_paused and self.is_translating:
                         time.sleep(0.5)
                     
                     if not self.is_translating:
-                        print("⚠️ 用户停止翻译")
-                        break
-                    
-                    future = executor.submit(self.translate_single_file, task, config)
-                    future_to_task[future] = task
-                
-                for future in as_completed(future_to_task):
-                    # 检查是否停止
-                    if not self.is_translating:
                         print("⚠️ 用户停止翻译，取消剩余任务")
                         break
                     
-                    task = future_to_task[future]
+                    # 检查已完成的任务（设置较短的超时以便及时响应暂停/停止）
                     try:
-                        completed_task = future.result()
+                        completed_futures = []
+                        for future in list(active_futures.keys()):
+                            if future.done():
+                                completed_futures.append(future)
+                        
+                        # 如果没有完成的任务，短暂等待
+                        if not completed_futures:
+                            time.sleep(0.1)
+                            continue
+                        
+                        # 处理完成的任务
+                        for future in completed_futures:
+                            task = active_futures.pop(future)
+                            
+                            try:
+                                completed_task = future.result()
+                                if completed_task.status == "已完成":
+                                    completed_count += 1
+                                    print(f"✓ 任务完成: {completed_task.filename}")
+                                    self.save_translation_result(completed_task, output_folder)
+                                elif completed_task.status == "失败":
+                                    failed_count += 1
+                                    print(f"✗ 任务失败: {completed_task.filename} - {completed_task.error_message}")
+                                else:
+                                    print(f"⚠️ 任务状态异常: {completed_task.filename} - {completed_task.status}")
+                                    
+                            except Exception as e:
+                                failed_count += 1
+                                task.status = "失败"
+                                task.error_message = f"处理任务结果时出错: {str(e)}"
+                                print(f"✗ 处理任务结果时出错: {task.filename} - {str(e)}")
+                                import traceback
+                                traceback.print_exc()
+                        
+                        # 提交新任务（如果还有待处理的任务）
+                        while len(active_futures) < concurrent_tasks and task_queue and self.is_translating:
+                            if self.is_paused:
+                                break
+                                
+                            task = task_queue.pop(0)
+                            print(f"[任务管理] 提交新任务: {task.filename}")
+                            future = executor.submit(self.translate_single_file, task, config)
+                            active_futures[future] = task
+                        
+                        # 更新状态显示
+                        total_tasks = len(self.translation_tasks)
+                        processed = completed_count + failed_count
+                        remaining = total_tasks - processed
+                        
+                        status_msg = f"翻译进度: {processed}/{total_tasks} (成功:{completed_count}, 失败:{failed_count}, 剩余:{remaining})"
+                        self.root.after(0, lambda msg=status_msg: self.file_status_var.set(msg))
+                        
+                    except Exception as e:
+                        print(f"⚠️ 任务管理循环中出错: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        time.sleep(1)  # 出错时稍作等待
+                
+                # 等待所有剩余任务完成
+                print(f"[任务管理] 等待剩余 {len(active_futures)} 个任务完成...")
+                for future in active_futures:
+                    try:
+                        task = active_futures[future]
+                        completed_task = future.result(timeout=30)  # 给每个任务30秒的额外等待时间
+                        
                         if completed_task.status == "已完成":
                             completed_count += 1
-                            print(f"✓ 保存翻译结果: {completed_task.filename}")
+                            print(f"✓ 最终任务完成: {completed_task.filename}")
                             self.save_translation_result(completed_task, output_folder)
                         elif completed_task.status == "失败":
                             failed_count += 1
-                            print(f"✗ 任务失败: {completed_task.filename} - {completed_task.error_message}")
+                            print(f"✗ 最终任务失败: {completed_task.filename} - {completed_task.error_message}")
+                            
+                    except concurrent.futures.TimeoutError:
+                        failed_count += 1
+                        task.status = "失败"
+                        task.error_message = "任务最终等待超时"
+                        print(f"✗ 最终任务超时: {task.filename}")
+                        
                     except Exception as e:
                         failed_count += 1
                         task.status = "失败"
                         task.error_message = str(e)
-                        print(f"✗ 处理任务时出错: {task.filename} - {str(e)}")
-                        import traceback
-                        traceback.print_exc()
+                        print(f"✗ 最终任务处理出错: {task.filename} - {str(e)}")
             
             self.is_translating = False
             self.is_paused = False
@@ -1878,7 +2051,7 @@ class TranslationAgentGUI:
             self.root.after(0, lambda: self.file_status_var.set(error_msg))
     
     def translate_single_file(self, task, config):
-        """翻译单个文件"""
+        """翻译单个文件 - 修复超时问题"""
         try:
             # 检查是否停止
             if not self.is_translating:
@@ -2353,7 +2526,11 @@ class TranslationAgentGUI:
                 'output_folder': self.output_folder_var.get(),
                 'output_format': self.output_format_var.get(),
                 'concurrent_tasks': self.concurrent_var.get(),
-                'file_types': {k: v.get() for k, v in self.file_types.items()}
+                'file_types': {k: v.get() for k, v in self.file_types.items()},
+                # 新增性能优化设置
+                'api_timeout': getattr(self, 'api_timeout_var', tk.IntVar(value=300)).get(),
+                'performance_mode': getattr(self, 'performance_mode_var', tk.StringVar(value="平衡")).get(),
+                'retry_count': getattr(self, 'retry_count_var', tk.IntVar(value=2)).get()
             }
             
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
@@ -2403,6 +2580,14 @@ class TranslationAgentGUI:
                 file_types_config = config.get('file_types', {})
                 for file_type, var in self.file_types.items():
                     var.set(file_types_config.get(file_type, file_type in ['txt', 'md', 'pdf', 'docx']))
+                
+                # 加载性能优化设置
+                if hasattr(self, 'api_timeout_var'):
+                    self.api_timeout_var.set(config.get('api_timeout', 300))  # 默认5分钟
+                if hasattr(self, 'performance_mode_var'):
+                    self.performance_mode_var.set(config.get('performance_mode', '平衡'))
+                if hasattr(self, 'retry_count_var'):
+                    self.retry_count_var.set(config.get('retry_count', 2))
                 
                 # 更新界面（显示/隐藏base_url字段）
                 self.on_endpoint_change()
