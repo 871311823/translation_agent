@@ -32,7 +32,7 @@ except ImportError as e:
 
 # 配置文件路径
 CONFIG_FILE = "translation_config.json"
-MAX_CONCURRENT_TASKS = 5
+MAX_CONCURRENT_TASKS = 1
 
 class TranslationTask:
     """翻译任务类"""
@@ -706,7 +706,7 @@ class TranslationAgentGUI:
         ttk.Label(concurrent_frame, text="并发任务数:", font=('Arial', 10, 'bold')).pack(side='left')
         
         # 并发数输入框
-        self.concurrent_var = tk.IntVar(value=5)
+        self.concurrent_var = tk.IntVar(value=1)
         concurrent_spinbox = ttk.Spinbox(concurrent_frame, from_=1, to=10, 
                                         textvariable=self.concurrent_var, 
                                         width=5, font=('Arial', 10))
@@ -725,7 +725,7 @@ class TranslationAgentGUI:
         self.concurrent_label.pack(side='left')
         
         # 并发建议
-        ttk.Label(concurrent_frame, text="(建议: 小文件8-10, 大文件2-3)", 
+        ttk.Label(concurrent_frame, text="(建议: 稳定翻译使用1, 快速处理可适当增加)", 
                  font=('Arial', 8), foreground='gray').pack(side='left', padx=(10, 0))
         
         # 右侧文件预览和统计面板
@@ -2259,9 +2259,12 @@ class TranslationAgentGUI:
         output_filename = self.get_smart_filename(task)
         output_path = os.path.join(output_folder, output_filename)
         
+        # 清理和格式化翻译内容，使其适合小说网站阅读
+        cleaned_content = self.clean_translation_for_novel(task.final_translation)
+        
         # 只保存最终翻译结果
         with open(output_path, "w", encoding="utf-8") as f:
-            f.write(task.final_translation)
+            f.write(cleaned_content)
         
         print(f"TXT文件已保存到: {output_path}")
     
@@ -2309,6 +2312,71 @@ class TranslationAgentGUI:
         except Exception as e:
             print(f"[文件命名] 获取文件名失败: {e}，使用文件名翻译")
             return self.translate_filename_to_english(task.filename)
+    
+    def clean_translation_for_novel(self, translation_text):
+        """清理翻译内容，使其适合小说网站阅读
+        
+        移除AI生成的提示性文字，优化格式
+        """
+        if not translation_text:
+            return ""
+        
+        # 需要移除的提示性短语列表（中英文）
+        ai_markers = [
+            "翻译如下：", "翻译如下:", "翻译：", "翻译:",
+            "正文如下：", "正文如下:", "正文：", "正文:",
+            "Translation:", "Translation as follows:", "TRANSLATION:", "TRANSLATION",
+            "Here is the translation:", "Here's the translation:",
+            "The translation is:", "Translated text:",
+            "以下是翻译：", "以下是翻译:", "以下为翻译：", "以下为翻译:",
+            "译文如下：", "译文如下:", "译文：", "译文:",
+            "英文翻译：", "英文翻译:", "英译：", "英译:",
+            "中文翻译：", "中文翻译:", "中译：", "中译:",
+        ]
+        
+        lines = translation_text.strip().split('\n')
+        cleaned_lines = []
+        
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            
+            # 跳过空行（但保留用于段落分隔）
+            if not line_stripped:
+                cleaned_lines.append('')
+                continue
+            
+            # 检查是否是AI提示性文字（通常在开头几行）
+            if i < 3:  # 只检查前3行
+                is_marker = False
+                for marker in ai_markers:
+                    if line_stripped.startswith(marker) or line_stripped == marker:
+                        is_marker = True
+                        print(f"[格式清理] 移除AI标记: {line_stripped}")
+                        break
+                
+                if is_marker:
+                    continue  # 跳过这一行
+            
+            # 保留这一行
+            cleaned_lines.append(line)
+        
+        # 重新组合文本
+        cleaned_text = '\n'.join(cleaned_lines)
+        
+        # 移除开头的多余空行
+        cleaned_text = cleaned_text.lstrip('\n')
+        
+        # 确保段落之间有适当的空行（小说格式）
+        # 将多个连续空行压缩为最多2个空行
+        import re
+        cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
+        
+        # 移除行尾空格
+        cleaned_text = '\n'.join(line.rstrip() for line in cleaned_text.split('\n'))
+        
+        print(f"[格式清理] 完成，原始长度: {len(translation_text)}, 清理后长度: {len(cleaned_text)}")
+        
+        return cleaned_text
     
     def translate_filename_to_english(self, chinese_filename):
         """将中文文件名翻译成英文"""
@@ -2409,9 +2477,11 @@ class TranslationAgentGUI:
         # 创建Word文档
         doc = Document()
         
-        # 直接添加翻译内容，不添加额外的标题和信息
+        # 清理和格式化翻译内容，使其适合小说网站阅读
+        cleaned_content = self.clean_translation_for_novel(task.final_translation)
+        
         # 按段落分割并添加
-        paragraphs = task.final_translation.split('\n')
+        paragraphs = cleaned_content.split('\n')
         for para_text in paragraphs:
             if para_text.strip():  # 跳过空行
                 doc.add_paragraph(para_text)
