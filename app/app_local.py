@@ -351,24 +351,83 @@ def start_batch_translation(
     return status_msg, update_progress_display(), gr.update(visible=True)
 
 
+def clean_translation_for_novel(translation_text):
+    """清理翻译内容，使其适合小说网站阅读
+    
+    移除AI生成的提示性文字，优化格式
+    """
+    if not translation_text:
+        return ""
+    
+    # 需要移除的提示性短语列表（中英文）
+    ai_markers = [
+        "翻译如下：", "翻译如下:", "翻译：", "翻译:",
+        "正文如下：", "正文如下:", "正文：", "正文:",
+        "Translation:", "Translation as follows:", "TRANSLATION:", "TRANSLATION",
+        "Here is the translation:", "Here's the translation:",
+        "The translation is:", "Translated text:",
+        "以下是翻译：", "以下是翻译:", "以下为翻译：", "以下为翻译:",
+        "译文如下：", "译文如下:", "译文：", "译文:",
+        "英文翻译：", "英文翻译:", "英译：", "英译:",
+        "中文翻译：", "中文翻译:", "中译：", "中译:",
+    ]
+    
+    lines = translation_text.strip().split('\n')
+    cleaned_lines = []
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # 跳过空行（但保留用于段落分隔）
+        if not line_stripped:
+            cleaned_lines.append('')
+            continue
+        
+        # 检查是否是AI提示性文字（通常在开头几行）
+        if i < 3:  # 只检查前3行
+            is_marker = False
+            for marker in ai_markers:
+                if line_stripped.startswith(marker) or line_stripped == marker:
+                    is_marker = True
+                    print(f"[格式清理] 移除AI标记: {line_stripped}")
+                    break
+            
+            if is_marker:
+                continue  # 跳过这一行
+        
+        # 保留这一行
+        cleaned_lines.append(line)
+    
+    # 重新组合文本
+    cleaned_text = '\n'.join(cleaned_lines)
+    
+    # 移除开头的多余空行
+    cleaned_text = cleaned_text.lstrip('\n')
+    
+    # 确保段落之间有适当的空行（小说格式）
+    # 将多个连续空行压缩为最多2个空行
+    import re
+    cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
+    
+    # 移除行尾空格
+    cleaned_text = '\n'.join(line.rstrip() for line in cleaned_text.split('\n'))
+    
+    print(f"[格式清理] 完成，原始长度: {len(translation_text)}, 清理后长度: {len(cleaned_text)}")
+    
+    return cleaned_text
+
+
 def save_translation_to_file(task: TranslationTask, output_folder: str):
-    """保存翻译结果到文件"""
+    """保存翻译结果到文件 - 只输出最终翻译内容"""
     try:
         output_filename = f"{task.filename}_translated.txt"
         output_path = os.path.join(output_folder, output_filename)
         
+        # 清理和格式化翻译内容，使其适合小说网站阅读
+        cleaned_content = clean_translation_for_novel(task.final_translation)
+        
         with open(output_path, "w", encoding="utf-8") as f:
-            f.write(f"原文件名: {task.filename}\n")
-            f.write(f"翻译时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write("=" * 50 + "\n\n")
-            f.write("最终翻译结果:\n")
-            f.write(task.final_translation)
-            f.write("\n\n" + "=" * 50 + "\n\n")
-            f.write("初始翻译:\n")
-            f.write(task.init_translation)
-            f.write("\n\n" + "-" * 30 + "\n\n")
-            f.write("反思建议:\n")
-            f.write(task.reflect_translation)
+            f.write(cleaned_content)
         
         print(f"翻译结果已保存到: {output_path}")
         

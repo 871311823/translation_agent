@@ -1,10 +1,18 @@
 from difflib import Differ
 
 import docx
-import gradio as gr
 import pymupdf
 from icecream import ic
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# Delay import of langchain_text_splitters to avoid initialization issues
+RecursiveCharacterTextSplitter = None
+
+def get_text_splitter():
+    """Lazy load RecursiveCharacterTextSplitter"""
+    global RecursiveCharacterTextSplitter
+    if RecursiveCharacterTextSplitter is None:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter as RCT
+        RecursiveCharacterTextSplitter = RCT
+    return RecursiveCharacterTextSplitter
 from patch import (
     calculate_chunk_size,
     model_load,
@@ -23,8 +31,18 @@ except ImportError:
     SIMPLEMMA_AVAILABLE = False
     print("Warning: simplemma not available, using basic tokenization")
 
-
-progress = gr.Progress()
+# Try to import gradio, if it fails use a placeholder
+try:
+    import gradio as gr
+    progress = gr.Progress()
+    GRADIO_AVAILABLE = True
+except ImportError:
+    GRADIO_AVAILABLE = False
+    # Create a placeholder progress object
+    class DummyProgress:
+        def __call__(self, *args, **kwargs):
+            pass
+    progress = DummyProgress()
 
 
 def extract_text(path):
@@ -165,7 +183,8 @@ def translator(
 
         ic(token_size)
 
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        TextSplitter = get_text_splitter()
+        text_splitter = TextSplitter.from_tiktoken_encoder(
             model_name="gpt-4",
             chunk_size=token_size,
             chunk_overlap=0,
@@ -234,11 +253,23 @@ def translator_sec(
         except Exception as e:
             error_msg = str(e)
             if "404" in error_msg or "Not Found" in error_msg:
-                raise gr.Error(f"额外端点配置错误 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
+                error_text = f"额外端点配置错误 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}"
+                if GRADIO_AVAILABLE:
+                    raise gr.Error(error_text) from e
+                else:
+                    raise Exception(error_text) from e
             elif "401" in error_msg or "Unauthorized" in error_msg:
-                raise gr.Error(f"额外端点API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
+                error_text = f"额外端点API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}"
+                if GRADIO_AVAILABLE:
+                    raise gr.Error(error_text) from e
+                else:
+                    raise Exception(error_text) from e
             else:
-                raise gr.Error(f"额外端点模型加载失败: {e}") from e
+                error_text = f"额外端点模型加载失败: {e}"
+                if GRADIO_AVAILABLE:
+                    raise gr.Error(error_text) from e
+                else:
+                    raise Exception(error_text) from e
 
         progress((2, 3), desc="反思评估中...")
         reflection = one_chunk_reflect_on_translation(
@@ -261,7 +292,8 @@ def translator_sec(
 
         ic(token_size)
 
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        TextSplitter = get_text_splitter()
+        text_splitter = TextSplitter.from_tiktoken_encoder(
             model_name="gpt-4",
             chunk_size=token_size,
             chunk_overlap=0,
@@ -281,11 +313,23 @@ def translator_sec(
         except Exception as e:
             error_msg = str(e)
             if "404" in error_msg or "Not Found" in error_msg:
-                raise gr.Error(f"额外端点配置错误 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}") from e
+                error_text = f"额外端点配置错误 (404): 请检查基础URL和模型名称是否正确。错误详情: {e}"
+                if GRADIO_AVAILABLE:
+                    raise gr.Error(error_text) from e
+                else:
+                    raise Exception(error_text) from e
             elif "401" in error_msg or "Unauthorized" in error_msg:
-                raise gr.Error(f"额外端点API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}") from e
+                error_text = f"额外端点API密钥无效 (401): 请检查API密钥是否正确。错误详情: {e}"
+                if GRADIO_AVAILABLE:
+                    raise gr.Error(error_text) from e
+                else:
+                    raise Exception(error_text) from e
             else:
-                raise gr.Error(f"额外端点模型加载失败: {e}") from e
+                error_text = f"额外端点模型加载失败: {e}"
+                if GRADIO_AVAILABLE:
+                    raise gr.Error(error_text) from e
+                else:
+                    raise Exception(error_text) from e
 
         progress((2, 3), desc="反思评估中...")
         reflection_chunks = multichunk_reflect_on_translation(

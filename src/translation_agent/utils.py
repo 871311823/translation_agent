@@ -5,7 +5,17 @@ import openai
 import tiktoken
 from dotenv import load_dotenv
 from icecream import ic
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# Delay import of langchain_text_splitters to avoid initialization issues
+RecursiveCharacterTextSplitter = None
+
+def get_text_splitter():
+    """Lazy load RecursiveCharacterTextSplitter"""
+    global RecursiveCharacterTextSplitter
+    if RecursiveCharacterTextSplitter is None:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter as RCT
+        RecursiveCharacterTextSplitter = RCT
+    return RecursiveCharacterTextSplitter
 
 
 load_dotenv()  # read local .env file
@@ -674,7 +684,8 @@ def translate(
 
         ic(token_size)
 
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        TextSplitter = get_text_splitter()
+        text_splitter = TextSplitter.from_tiktoken_encoder(
             model_name="gpt-4",
             chunk_size=token_size,
             chunk_overlap=0,

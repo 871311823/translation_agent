@@ -14,10 +14,10 @@
   "max_tokens": 1000,
   "temperature": 0.3,
   "rpm": 60,
-  "input_folder": "D:/Code/OPPO/AI_NovelGenerator/小说/系统错误：NPC的绝对恐怖统治/章节正文",
-  "output_folder": "D:/Code/OPPO/AI_NovelGenerator/小说/系统错误：NPC的绝对恐怖统治/译文",
+  "input_folder": "E:/code/auto/AI_book/小说/机械师大女主/章节正文",
+  "output_folder": "E:/code/auto/AI_book/小说/机械师大女主/译文",
   "output_format": "txt",
-  "concurrent_tasks": 5,
+  "concurrent_tasks": 1,
   "file_types": {
     "txt": true,
     "md": false,
